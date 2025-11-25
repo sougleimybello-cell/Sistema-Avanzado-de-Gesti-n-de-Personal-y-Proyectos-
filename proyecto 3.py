@@ -16,27 +16,30 @@ class Empleado(ABC):
         self.__proyectos_activos = [] # Lista de objetos Proyecto
         identificador_unico += 1
 
-    # (Acceso controlado a atributos privados)
-    @property
-    def nombre(self):
+    def obtener_nombre(self):
         return self.__nombre_completo
 
-    @property
-    def id_empleado(self):
+    def obtener_id_empleado(self):
         return self.__identificador_empleado
 
-    @property
-    def salario_base(self):
+    def obtener_salario_base(self):
         return self.__salario_base_mensual
 
-    @property
-    def proyectos_activos(self):
+    def obtener_proyectos_activos(self):
         return self.__proyectos_activos
 
-    # DEBE ser implementado por las subclases
-    @abstractmethod
+    nombre = property(obtener_nombre)
+    id_empleado = property(obtener_id_empleado)
+    salario_base = property(obtener_salario_base)
+    proyectos_activos = property(obtener_proyectos_activos)
+
+
+    # DEBE ser implementado por las subclases (sin @abstractmethod)
     def calcular_salario(self) -> float:
         """Calcula el salario total, implementado de forma polimórfica."""
+        if type(self) is Empleado:
+            print("⚠️ Error: calcular_salario debe ser implementado en la subclase.")
+            return 0.0
         pass
     
     # Método para definir el límite de proyectos por rol
@@ -49,8 +52,9 @@ class Empleado(ABC):
         salario_final = self.calcular_salario()
         print("   > Nombre: " + self.__nombre_completo)
         print("   > ID: " + str(self.__identificador_empleado))
-        print("   > Salario Base: $" + "{:,.2f}".format(self.__salario_base_mensual))
-        print("   > Salario Calculado: $" + "{:,.2f}".format(salario_final))
+        # SIN .format()
+        print("   > Salario Base: $" + str(round(self.__salario_base_mensual, 2)))
+        print("   > Salario Calculado: $" + str(round(salario_final, 2)))
 
     def asignar_proyecto(self, proyecto):
         """Agrega el empleado a un proyecto, verificando el límite y restricciones."""
@@ -58,12 +62,12 @@ class Empleado(ABC):
         
         # Restricción para Gerente
         if isinstance(self, Gerente):
-            print("⚠️ Error: El Gerente " + self.nombre + " no puede ser asignado a un proyecto como miembro.")
+            print("Error: El Gerente " + self.nombre + " no puede ser asignado a un proyecto como miembro.")
             return False
 
         # Restricción por límite
         if len(self.__proyectos_activos) >= limite:
-            print("⚠️ Error: " + self.nombre + " ya está en su límite de " + str(limite) + " proyectos activos.")
+            print("Error: " + self.nombre + " ya está en su límite de " + str(limite) + " proyectos activos.")
             return False
         
         # Asignación
@@ -82,6 +86,7 @@ class Desarrollador(Empleado):
     def __init__(self, nombre_completo: str, salario_base_mensual: float, lenguajes_programacion: list, nivel_seniority: str):
         super().__init__(nombre_completo, salario_base_mensual)
         self.lenguajes_programacion = lenguajes_programacion
+        # Lógica manual para simular .capitalize()
         self.nivel_seniority = nivel_seniority[0].upper() + nivel_seniority[1:].lower() if nivel_seniority else ""
         
     def _limite_proyectos(self):
@@ -150,9 +155,8 @@ class Diseñador(Empleado):
 
     def mostrar_informacion(self):
         super().mostrar_informacion()
-        print("   > Rol: Diseñador (" + self.especialidad_diseño + ")")
+        print("   > Rol: siseñador (" + self.especialidad_diseño + ")")
         print("   > Herramientas:", end=" ")
-        # Reemplazo de .join()
         herramientas_str = ""
         contador = 0
         for herramienta in self.herramientas_diseño:
@@ -176,7 +180,6 @@ class Gerente(Empleado):
 
     def calcular_salario(self) -> float:
         """Salario + 15% del total de salarios de su equipo directo."""
-        # Polimorfismo: llama al calcular_salario() de cada miembro del equipo
         total_salarios_equipo = sum(emp.calcular_salario() for emp in self.equipo_a_cargo)
         bono = total_salarios_equipo * 0.15
         return self.salario_base + bono
@@ -220,31 +223,33 @@ class Proyecto:
         self.presupuesto_asignado = presupuesto_asignado
         self.lista_empleados = [] # Lista de objetos Empleado
 
-    @property
-    def nombre(self):
+    def obtener_nombre(self):
         return self.nombre_proyecto
     
-    @property
-    def presupuesto(self):
+    def obtener_presupuesto(self):
         return self.presupuesto_asignado
+
+    nombre = property(obtener_nombre)
+    presupuesto = property(obtener_presupuesto)
 
     def agregar_empleado(self, empleado: Empleado):
         """Asigna un empleado al proyecto, verificando límites y duplicados."""
         
         if empleado in self.lista_empleados:
-            print("⚠️ Error: El empleado " + empleado.nombre + " ya está asignado al proyecto " + self.nombre_proyecto + ".")
+            print("Error: El empleado " + empleado.nombre + " ya está asignado al proyecto " + self.nombre_proyecto + ".")
             return
 
         try:
             if empleado.asignar_proyecto(self):
                 self.lista_empleados = self.lista_empleados + [empleado]
-                print("✅ " + empleado.nombre + " agregado al proyecto " + self.nombre_proyecto + ".")
+                print(empleado.nombre + " agregado al proyecto " + self.nombre_proyecto + ".")
         except ValueError as e:
             print(e)
             return
 
     def costo_total(self) -> float:
         """Devuelve la suma de los salarios mensuales de los empleados asignados."""
+        # Polimorfismo: llama a calcular_salario() de cada empleado
         return sum(emp.calcular_salario() for emp in self.lista_empleados)
 
     def viabilidad(self) -> bool:
@@ -253,12 +258,12 @@ class Proyecto:
         limite_costo = self.presupuesto_asignado * 0.7
         es_viable = costo <= limite_costo
         
-        print("")
+        print("") 
         print("--- Viabilidad del Proyecto '" + self.nombre_proyecto + "' ---")
-        print("   > Presupuesto Total: $" + "{:,.2f}".format(self.presupuesto_asignado))
-        print("   > Límite de Costo (70%): $" + "{:,.2f}".format(limite_costo))
-        print("   > Costo Total Mensual: $" + "{:,.2f}".format(costo))
-        print("   > Viable: " + ('✅ Sí' if es_viable else '❌ No'))
+        print("   > Presupuesto Total: $" + str(round(self.presupuesto_asignado, 2)))
+        print("   > Límite de Costo (70%): $" + str(round(limite_costo, 2)))
+        print("   > Costo Total Mensual: $" + str(round(costo, 2)))
+        print("   > Viable: " + ('Sí' if es_viable else 'No'))
         
         return es_viable
 
@@ -272,11 +277,11 @@ def _obtener_float_input(prompt):
         try:
             valor = float(input(prompt))
             if valor <= 0:
-                print("❌ Entrada inválida. Por favor, ingrese un número positivo.")
+                print(" Entrada inválida. Por favor, ingrese un número positivo.")
                 continue
             return valor
         except ValueError:
-            print("❌ Entrada inválida. Por favor, ingrese un número positivo.")
+            print("Entrada inválida. Por favor, ingrese un número positivo.")
 
 def _obtener_lista_input(prompt):
     """Función auxiliar para obtener una lista separada por comas."""
@@ -284,7 +289,7 @@ def _obtener_lista_input(prompt):
     lista_resultado = []
     elementos = data_str.split(',')
     for elemento in elementos:
-        if len(elemento) > 0: 
+        if len(elemento) > 0:
             lista_resultado = lista_resultado + [elemento] 
     return lista_resultado
 
@@ -302,7 +307,7 @@ def crear_empleado_interactivo(rol: str):
             nivel_seniority = nivel_seniority_input[0].upper() + nivel_seniority_input[1:].lower() if nivel_seniority_input else ""
             if nivel_seniority in ["Junior", "Semisenior", "Senior"]:
                 return Desarrollador(nombre_completo, salario_base_mensual, lenguajes_programacion, nivel_seniority_input)
-            print("❌ Nivel inválido. Intente de nuevo.")
+            print("Nivel inválido. Intente de nuevo.")
         
     elif rol == "Diseñador":
         herramientas_diseño = _obtener_lista_input("Herramientas (separadas por coma, ej: Figma,Photoshop): ")
@@ -323,10 +328,8 @@ def crear_proyecto_interactivo():
 
 def procesar_empleados(lista_empleados: list[Empleado]):
     """Muestra la información detallada de los empleados y sus proyectos."""
-    print("") 
-    print("="*50)
-    print("📋 PROCESAMIENTO DE INFORMACIÓN DE EMPLEADOS")
-    print("="*50)
+    print("")
+    print("PROCESAMIENTO DE INFORMACIÓN DE EMPLEADOS")
     
     for emp in lista_empleados:
         print("") 
@@ -350,7 +353,7 @@ def procesar_empleados(lista_empleados: list[Empleado]):
 
 
 # ----------------------------------------------------
-# 5. Pruebas con la interancion del usuario
+# 5. Programa principal (Lógica de Prueba Interactivo)
 # ----------------------------------------------------
 
 def main_interactivo():
@@ -372,9 +375,9 @@ def main_interactivo():
     lista_empleados = lista_empleados + [gerente1]
     
     # 2. Desarrolladores
-    print("") 
+    print("")
     print("----------" + " Creando el Equipo Directo para " + gerente1.nombre + " " + "----------")
-    desarrollador1 = crear_empleado_interactivo("Sesarrollador")
+    desarrollador1 = crear_empleado_interactivo("Desarrollador")
     lista_empleados = lista_empleados + [desarrollador1]
     gerente1.agregar_al_equipo(desarrollador1)
     
